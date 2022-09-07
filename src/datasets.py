@@ -30,8 +30,8 @@ def get_dataloader(
         pin_memory=True,
         drop_last=False,
         generator=generator,
-        persistent_workers=True,
-        drop_last=True,
+        persistent_workers=True
+        
     )
 
 
