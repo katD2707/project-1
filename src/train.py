@@ -152,7 +152,7 @@ def train(params):
             params.wandb.project,
             params.wandb.entity,
             name=run_name,
-            config=params.entries,
+            config=params.training,
         )
 
     # Perform training loop
