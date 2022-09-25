@@ -66,6 +66,7 @@ baseline:
 wandb:
   enabled: true
   project: "titanet-test"
+  entity: "d-yukito"
   api_key_file: "./init/wandb_api_key_file"
 
 generic:
