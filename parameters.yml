@@ -65,7 +65,6 @@ baseline:
 
 wandb:
   enabled: true
-  entity: "wadaboa"
   project: "titanet-test"
   api_key_file: "./init/wandb_api_key_file"
 
