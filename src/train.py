@@ -150,7 +150,6 @@ def train(params):
         wandb_run = utils.init_wandb(
             params.wandb.api_key_file,
             params.wandb.project,
-            params.wandb.entity,
             name=run_name,
             config=params.entries,
         )
