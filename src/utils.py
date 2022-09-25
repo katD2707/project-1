@@ -410,7 +410,8 @@ def init_wandb(api_key_file, project, entity, name=None, config=None):
     return wandb.init(
         name=name,
         project=project,
-        config=config
+        entity=entity,
+        config=config,
     )
 
 
