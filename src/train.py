@@ -147,6 +147,7 @@ def train(params):
     wandb_run = None
     run_name = utils.now()
     if params.wandb.enabled:
+        print(1)
         wandb_run = utils.init_wandb(
             params.wandb.api_key_file,
             params.wandb.project,
