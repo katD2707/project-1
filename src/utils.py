@@ -400,7 +400,7 @@ def get_test_metrics(
     return metrics
 
 
-def init_wandb(api_key_file, project, entity, name=None, config=None):
+def init_wandb(api_key_file, project, entity=None, name=None, config=None):
     """
     Return a new W&B run to be used for logging purposes
     """
