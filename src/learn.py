@@ -174,8 +174,9 @@ def train_one_epoch(
 
     # Log to wandb
     if wandb_run is not None:
+        print(2)
         wandb_run.log(metrics, step=current_epoch)
-
+        print(3)
 
 def save_checkpoint(
     epoch, checkpoints_path, model, optimizer, lr_scheduler=None, wandb_run=None
