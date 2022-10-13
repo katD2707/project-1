@@ -3,16 +3,17 @@ dataset:
 
 training:
   optimizer:
-    type: "adam"
-    start_lr: 0.001
-    scheduler: false
+    type: "sgd"
+    momentum: 0.9
+    start_lr: 0.08
+    scheduler: true
     end_lr: 0.00001
-    weight_decay: 0.0
+    weight_decay: 0.0002
   checkpoints_path: "./checkpoints"
-  checkpoints_frequency: 25 # epochs
+  checkpoints_frequency: 2 # epochs
   batch_size: 8
   epochs: 250
-  loss: "ce"
+  loss: "arc"
 
 figures:
   enabled: false
@@ -50,9 +51,9 @@ dumb:
 
 titanet:
   enabled: true
-  model_size: "s"
-  n_mega_blocks: 17
-  attention_hidden_size: 128
+  model_size: "l"
+  n_mega_blocks: 3
+  attention_hidden_size: 640
   simple_pool: false
   dropout: 0.1
 
@@ -64,15 +65,14 @@ baseline:
   average: True
 
 wandb:
-  enabled: true
+  enabled: false
   project: "titanet-test"
   entity: "d-yukito"
   api_key_file: "./init/wandb_api_key_file"
 
 generic:
   seed: 42
-  workers: 2
-  log_console: false
+  workers: 4
   chart_dependencies: false
   embedding_size: 192
 

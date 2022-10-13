@@ -28,7 +28,7 @@ def get_dataloader(
         num_workers=num_workers,
         collate_fn=partial(collate_fn, n_mels=n_mels),
         pin_memory=True,
-        drop_last=False,
+        drop_last=True,
         generator=generator,
         persistent_workers=True
         
@@ -270,20 +270,6 @@ class SpeakerDataset:
             "durations_per_speaker_std": round(np.std(durations_per_speaker), 2),
         }
 
-    def __getitem__(self, idx):
-        waveform, sample_rate, speaker = self.get_sample(idx)
-        example = {
-            "waveform": waveform.to("cpu"),
-            "sample_rate": sample_rate,
-            "spectrogram": None,
-            "speaker": speaker,
-            "speaker_id": self.speakers_to_id[speaker],
-        }
-        for transform in self.transforms:
-            example = transform(example)
-        return example
-
-
 class LibriSpeechDataset(SpeakerDataset, torchaudio.datasets.LIBRISPEECH):
     """
     Custom LibriSpeech dataset for speaker-related tasks
@@ -303,7 +289,7 @@ class LibriSpeechDataset(SpeakerDataset, torchaudio.datasets.LIBRISPEECH):
             speakers_utterances[int(speaker_id)].append(i)
         return speakers_utterances
 
-    def get_sample(self, idx):
+    def __getitem__(self, idx):
         (
             waveform,
             sample_rate,

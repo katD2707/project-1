@@ -57,8 +57,6 @@ class DepthwiseConv1d(nn.Module):
         stride=1,
         dilation=1,
         bias=True,
-        device=None,
-        dtype=None,
     ):
         super(DepthwiseConv1d, self).__init__()
         self.conv = nn.Sequential(
@@ -70,11 +68,9 @@ class DepthwiseConv1d(nn.Module):
                 dilation=dilation,
                 groups=in_channels,
                 bias=bias,
-                device=device,
-                dtype=dtype,
             ),
             Conv1dSamePadding(
-                in_channels, out_channels, kernel_size=1, device=device, dtype=dtype
+                in_channels, out_channels, kernel_size=1,
             ),
         )
 
@@ -90,6 +86,7 @@ class DepthwiseConv1d(nn.Module):
         CO: output channels
         WO: output width
         """
+        print('lol')
         return self.conv(inputs)
 
 
@@ -145,6 +142,7 @@ class ConvBlock1d(nn.Module):
         CO: output channels
         WO: output width
         """
+        print(6)
         return self.conv_block(inputs)
 
 
@@ -179,6 +177,7 @@ class SqueezeExcitation(nn.Module):
         C: number of channels
         W: input width
         """
+        print('yo')
         # [B, C, W] -> [B, C]
         squeezed = self.squeeze(inputs).squeeze(-1)
 

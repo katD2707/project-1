@@ -8,71 +8,52 @@ from matplotlib.pyplot import figure
 import torch
 import torch.nn.functional as F
 import wandb
-from rich.console import Console
-from rich.table import Table
 from tqdm import tqdm
 
 import utils
 
 
-# Rich console
-CONSOLE = Console()
-
-
-def log_step(
-    current_epoch, total_epochs, current_step, total_steps, loss, times, prefix
+def save_checkpoint(
+        epoch,
+        checkpoints_path,
+        model,
+        optimizer,
+        lr_scheduler=None,
+        # wandb_run=None,
 ):
     """
-    Log metrics to the console after a forward pass
+    Save the current state of the model, optimizer and learning rate scheduler,
+    both locally and on wandb (if available and enabled)
     """
-    table = Table(show_header=True, header_style="bold")
-    table.add_column("SPLIT")
-    table.add_column("EPOCH")
-    table.add_column("STEP")
-    table.add_column("LOSS")
-    for time in times:
-        table.add_column(f"{time.upper()} TIME")
-    time_values = [f"{t:.2f}" for t in times.values()]
-    table.add_row(
-        prefix.capitalize(),
-        f"{current_epoch} / {total_epochs}",
-        f"{current_step} / {total_steps}",
-        f"{loss:.2f}",
-        *tuple(time_values),
-    )
-    CONSOLE.print(table)
+    # Create state dictionary
+    state_dict = {
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "lr_scheduler": (
+            lr_scheduler.state_dict() if lr_scheduler is not None else dict()
+        ),
+        "epoch": epoch,
+    }
 
-
-def log_epoch(current_epoch, total_epochs, metrics, prefix):
-    """
-    Log metrics to the console after an epoch
-    """
-    table = Table(show_header=True, header_style="bold")
-    table.add_column("SPLIT")
-    table.add_column("EPOCH")
-    for k in metrics:
-        table.add_column(k.replace(prefix, "").replace("/", "").upper())
-    metric_values = [f"{m:.2f}" for m in metrics.values()]
-    table.add_row(
-        prefix.capitalize(),
-        f"{current_epoch} / {total_epochs}",
-        *tuple(metric_values),
-    )
-    CONSOLE.print(table)
+    # Save state dictionary
+    checkpoint_file = os.path.join(checkpoints_path, f"titanet_epoch_{epoch}.pth")
+    torch.save(state_dict, checkpoint_file)
+    # if wandb_run is not None:
+    #     wandb_run.save(checkpoint_file)
 
 
 def train_one_epoch(
-    current_epoch,
-    total_epochs,
-    model,
-    optimizer,
-    dataloader,
-    lr_scheduler=None,
-    figures_path=None,
-    reduction_method="svd",
-    wandb_run=None,
-    log_console=True,
-    device="cpu",
+        current_epoch,
+        total_epochs,
+        model,
+        optimizer,
+        dataloader,
+        lr_scheduler=None,
+        figures_path=None,
+        reduction_method="svd",
+        wandb_run=None,
+        log_console=True,
+        device="cpu",
 ):
     """
     Train the given model for one epoch with the given dataloader and optimizer
@@ -92,9 +73,10 @@ def train_one_epoch(
 
         # Get model outputs
         model_time = time.time()
-        embeddings, preds, loss = model(
-            spectrograms.to(device), speakers=speakers.to(device)
-        )
+
+        spec, speak = spectrograms.to(device), speakers.to(device)
+        embeddings, preds, loss = model(spec, speak)
+
         model_time = time.time() - model_time
 
         # Store epoch info
@@ -113,18 +95,15 @@ def train_one_epoch(
 
         # Perform backpropagation
         opt_time = time.time()
-        optimizer.zero_grad()
+
         loss.backward()
         optimizer.step()
         opt_time = time.time() - opt_time
         epoch_opt_time += opt_time
 
-        # Log to console
-        if log_console:
-            times = {"model": model_time, "data": data_time, "opt": opt_time}
-            log_step(
-                current_epoch, total_epochs, step, len(dataloader), loss, times, "train"
-            )
+        if step % 25 == 0:
+            print(f'===> Training: Epoch [{current_epoch}/{total_epochs}]({step}/{len(dataloader)}): Loss: {loss:.2f} '
+                  f'in {model_time + data_time + opt_time:.1f} sec')
 
         # Empty CUDA cache
         if torch.cuda.is_available():
@@ -140,23 +119,16 @@ def train_one_epoch(
         metrics = utils.get_train_val_metrics(
             epoch_targets, epoch_preds, prefix="train"
         )
-    metrics["train/total_loss"] = epoch_loss
-    metrics["train/avg_loss"] = epoch_loss / len(dataloader)
-    metrics["train/total_data_time"] = epoch_data_time
-    metrics["train/avg_data_time"] = epoch_data_time / len(dataloader)
-    metrics["train/total_model_time"] = epoch_model_time
-    metrics["train/avg_model_time"] = epoch_model_time / len(dataloader)
-    metrics["train/total_opt_time"] = epoch_opt_time
-    metrics["train/avg_opt_time"] = epoch_opt_time / len(dataloader)
-    metrics["train/lr"] = (
-        lr_scheduler.get_last_lr()[0]
-        if lr_scheduler is not None
-        else optimizer.param_groups[0]["lr"]
-    )
 
-    # Log to console
-    if log_console:
-        log_epoch(current_epoch, total_epochs, metrics, "train")
+    print(f'++++++++  TRAINING: Epoch [{current_epoch}/{total_epochs}]: AVGLoss: {(epoch_loss / len(dataloader)):.2f} '
+          f'in {epoch_model_time + epoch_data_time + epoch_opt_time:.2f} sec '
+          f'with LR: {lr_scheduler.get_last_lr()[0] if lr_scheduler is not None else optimizer.param_groups[0]["lr"]}  '
+          f'++++++++')
+    print(f'++++++++  Metrics: '
+          f'Accuracy: {metrics["accuracy"]:.2f}   '
+          f'Precision: {metrics["precision"]:.2f}   '
+          f'Recall: {metrics["recall"]:.2f}   '
+          f'F1: {metrics["f1"]:.2f}  ++++++++')
 
     # Plot embeddings
     if figures_path is not None:
@@ -173,67 +145,43 @@ def train_one_epoch(
             metrics["train/embeddings"] = wandb.Image(figure_path)
 
     # Log to wandb
-    if wandb_run is not None:
-        print(2)
-        wandb_run.log(metrics, step=current_epoch)
-        print(3)
-
-def save_checkpoint(
-    epoch, checkpoints_path, model, optimizer, lr_scheduler=None, wandb_run=None
-):
-    """
-    Save the current state of the model, optimizer and learning rate scheduler,
-    both locally and on wandb (if available and enabled)
-    """
-    # Create state dictionary
-    state_dict = {
-        "model": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "lr_scheduler": (
-            lr_scheduler.state_dict() if lr_scheduler is not None else dict()
-        ),
-        "epoch": epoch,
-    }
-
-    # Save state dictionary
-    checkpoint_file = os.path.join(checkpoints_path, f"epoch_{epoch}.pth")
-    torch.save(state_dict, checkpoint_file)
-    if wandb_run is not None:
-        wandb_run.save(checkpoint_file)
+    # if wandb_run is not None:
+    #     wandb_run.log(metrics, step=current_epoch)
 
 
 def training_loop(
-    run_name,
-    epochs,
-    model,
-    optimizer,
-    train_dataloader,
-    checkpoints_path,
-    test_dataset=None,
-    val_dataloader=None,
-    val_every=None,
-    figures_path=None,
-    reduction_method="svd",
-    lr_scheduler=None,
-    checkpoints_frequency=None,
-    wandb_run=None,
-    log_console=True,
-    mindcf_p_target=0.01,
-    mindcf_c_fa=1,
-    mindcf_c_miss=1,
-    device="cpu",
+        # run_name,
+        epochs,
+        model,
+        optimizer,
+        train_dataloader,
+        checkpoints_path,
+        test_dataset=None,
+        val_dataloader=None,
+        val_every=None,
+        figures_path=None,
+        reduction_method="svd",
+        lr_scheduler=None,
+        checkpoints_frequency=None,
+        # wandb_run=None,
+        log_console=True,
+        mindcf_p_target=0.01,
+        mindcf_c_fa=1,
+        mindcf_c_miss=1,
+        device="cpu",
 ):
     """
     Standard training loop function: train and evaluate
     after each training epoch
     """
     # Create checkpoints directory
-    checkpoints_path = os.path.join(checkpoints_path, run_name)
-    os.makedirs(checkpoints_path, exist_ok=True)
+    # checkpoints_path = os.path.join(checkpoints_path, run_name)
+    if os.path.exists(checkpoints_path) is False:
+        os.makedirs(checkpoints_path)
 
     # Create figures directory
     if figures_path is not None:
-        figures_path = os.path.join(figures_path, run_name)
+        figures_path = os.path.join(figures_path)
         os.makedirs(figures_path, exist_ok=True)
 
     # For each epoch
@@ -249,8 +197,7 @@ def training_loop(
             lr_scheduler=lr_scheduler,
             figures_path=figures_path,
             reduction_method=reduction_method,
-            wandb_run=wandb_run,
-            log_console=log_console,
+            # wandb_run=wandb_run,
             device=device,
         )
 
@@ -266,14 +213,14 @@ def training_loop(
                 model,
                 optimizer,
                 lr_scheduler=lr_scheduler,
-                wandb_run=wandb_run,
+                # wandb_run=wandb_run,
             )
 
         # Evaluate once in a while (always evaluate at the first and last epochs)
         if (
-            val_dataloader is not None
-            and val_every is not None
-            and (epoch % val_every == 0 or epoch == 1 or epoch == epochs)
+                val_dataloader is not None
+                and val_every is not None
+                and (epoch % val_every == 0 or epoch == 1 or epoch == epochs)
         ):
             evaluate(
                 model,
@@ -282,8 +229,7 @@ def training_loop(
                 total_epochs=epochs,
                 figures_path=figures_path,
                 reduction_method=reduction_method,
-                wandb_run=wandb_run,
-                log_console=log_console,
+                # wandb_run=wandb_run,
                 device=device,
             )
 
@@ -294,7 +240,7 @@ def training_loop(
         model,
         optimizer,
         lr_scheduler=lr_scheduler,
-        wandb_run=wandb_run,
+        # wandb_run=wandb_run,
     )
 
     # Final test
@@ -302,7 +248,7 @@ def training_loop(
         test(
             model,
             test_dataset,
-            wandb_run=wandb_run,
+            # wandb_run=wandb_run,
             log_console=log_console,
             mindcf_p_target=mindcf_p_target,
             mindcf_c_fa=mindcf_c_fa,
@@ -313,16 +259,15 @@ def training_loop(
 
 @torch.no_grad()
 def evaluate(
-    model,
-    dataloader,
-    current_epoch=None,
-    total_epochs=None,
-    figures_path=None,
-    figure_name=None,
-    reduction_method="svd",
-    wandb_run=None,
-    log_console=True,
-    device="cpu",
+        model,
+        dataloader,
+        current_epoch=None,
+        total_epochs=None,
+        figures_path=None,
+        figure_name=None,
+        reduction_method="svd",
+        # wandb_run=None,
+        device="cpu",
 ):
     """
     Evaluate the given model for one epoch with the given dataloader
@@ -360,12 +305,8 @@ def evaluate(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # Log to console
-        if log_console:
-            times = {"model": model_time, "data": data_time}
-            log_step(
-                current_epoch, total_epochs, step, len(dataloader), loss, times, "val"
-            )
+        print(f'===> Validate: Epoch [{current_epoch}/{total_epochs}]({step}/{len(dataloader)}): Loss: {loss:.2f} in '
+              f'{model_time + data_time:.1f} sec')
 
         # Increment step and re-initialize time counter
         step += 1
@@ -375,16 +316,15 @@ def evaluate(
     metrics = dict()
     if len(epoch_preds) > 0:
         metrics = utils.get_train_val_metrics(epoch_targets, epoch_preds, prefix="val")
-    metrics[f"val/total_loss"] = epoch_loss
-    metrics[f"val/avg_loss"] = epoch_loss / len(dataloader)
-    metrics[f"val/total_data_time"] = epoch_data_time
-    metrics[f"val/avg_data_time"] = epoch_data_time / len(dataloader)
-    metrics[f"val/total_model_time"] = epoch_model_time
-    metrics[f"val/avg_model_time"] = epoch_model_time / len(dataloader)
 
-    # Log to console
-    if log_console:
-        log_epoch(current_epoch, total_epochs, metrics, "val")
+    print(f'++++++++  TRAINING: Epoch [{current_epoch}/{total_epochs}]: '
+          f'AVGLoss: {(epoch_loss / len(dataloader)):.2f} '
+          f'in {epoch_model_time + epoch_data_time:.2f} sec  ++++++++')
+    print(f'++++++++  Metrics: '
+          f'Accuracy: {metrics["accuracy"]:.2f}   '
+          f'Precision: {metrics["precision"]:.2f}   '
+          f'Recall: {metrics["recall"]:.2f}   '
+          f'F1: {metrics["f1"]:.2f}  ++++++++')
 
     # Plot embeddings
     if figures_path is not None:
@@ -399,25 +339,25 @@ def evaluate(
             save=figure_path,
             only_centroids=False,
         )
-        if wandb_run is not None:
-            metrics[f"val/embeddings"] = wandb.Image(figure_path)
+        # if wandb_run is not None:
+        #     metrics[f"val/embeddings"] = wandb.Image(figure_path)
 
     # Log to wandb
-    if wandb_run is not None:
-        wandb_run.log(metrics, step=current_epoch)
+    # if wandb_run is not None:
+    #     wandb_run.log(metrics, step=current_epoch)
 
 
 @torch.no_grad()
 def test(
-    model,
-    test_dataset,
-    indices=None,
-    wandb_run=None,
-    log_console=True,
-    mindcf_p_target=0.01,
-    mindcf_c_fa=1,
-    mindcf_c_miss=1,
-    device="cpu",
+        model,
+        test_dataset,
+        indices=None,
+        wandb_run=None,
+        log_console=True,
+        mindcf_p_target=0.01,
+        mindcf_c_fa=1,
+        mindcf_c_miss=1,
+        device="cpu",
 ):
     """
     Test the given model and store EER and minDCF metrics
@@ -449,25 +389,23 @@ def test(
         prefix="test",
     )
 
-    # Log to console
-    if log_console:
-        log_epoch(None, None, metrics, "test")
+    print(f'++++++++  Testing: EER: {metrics["eer"]} / Precision: {metrics["mindcf"]}  ++++++++')
 
     # Log to wandb
-    if wandb_run is not None:
-        wandb_run.notes = json.dumps(metrics, indent=2).encode("utf-8")
+    # if wandb_run is not None:
+    #     wandb_run.notes = json.dumps(metrics, indent=2).encode("utf-8")
 
     return metrics
 
 
 def infer(
-    model,
-    utterances,
-    speakers,
-    dataset,
-    reduction_method="svd",
-    figure_path=None,
-    device="cpu",
+        model,
+        utterances,
+        speakers,
+        dataset,
+        reduction_method="svd",
+        figure_path=None,
+        device="cpu",
 ):
     """
     Compute embeddings for the given utterances and plot them

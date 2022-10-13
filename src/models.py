@@ -14,14 +14,14 @@ class DumbConvNet(nn.Module):
     """
 
     def __init__(
-        self,
-        n_mels,
-        loss_function=None,
-        hidden_size=256,
-        embedding_size=192,
-        kernel_size=3,
-        n_layers=1,
-        device="cpu",
+            self,
+            n_mels,
+            loss_function=None,
+            hidden_size=256,
+            embedding_size=192,
+            kernel_size=3,
+            n_layers=1,
+            device="cpu",
     ):
         super(DumbConvNet, self).__init__()
 
@@ -62,7 +62,7 @@ class DumbConvNet(nn.Module):
 
         # Training mode
         assert (
-            self.loss_function is not None
+                self.loss_function is not None
         ), "Loss function should not be None in training mode"
         return self.loss_function(embeddings, speakers)
 
@@ -78,15 +78,15 @@ class DVectorBaseline(nn.Module):
     """
 
     def __init__(
-        self,
-        n_mels,
-        loss_function=None,
-        n_lstm_layers=3,
-        hidden_size=768,
-        lstm_average=True,
-        embedding_size=256,
-        segment_length=160,
-        device="cpu",
+            self,
+            n_mels,
+            loss_function=None,
+            n_lstm_layers=3,
+            hidden_size=768,
+            lstm_average=True,
+            embedding_size=256,
+            segment_length=160,
+            device="cpu",
     ):
         super(DVectorBaseline, self).__init__()
 
@@ -154,7 +154,7 @@ class DVectorBaseline(nn.Module):
 
         # Training mode
         assert (
-            self.loss_function is not None
+                self.loss_function is not None
         ), "Loss function should not be None in training mode"
         return self.loss_function(embeddings, speakers)
 
@@ -173,22 +173,21 @@ class TitaNet(nn.Module):
     TARGET_PARAMS = {"s": 6.4, "m": 13.4, "l": 25.3}
 
     def __init__(
-        self,
-        n_mels,
-        n_mega_blocks,
-        n_sub_blocks,
-        encoder_hidden_size,
-        encoder_output_size,
-        embedding_size,
-        mega_block_kernel_size,
-        prolog_kernel_size=3,
-        epilog_kernel_size=1,
-        attention_hidden_size=128,
-        se_reduction=16,
-        simple_pool=False,
-        loss_function=None,
-        dropout=0.5,
-        device="cpu",
+            self,
+            n_mels,
+            n_mega_blocks,
+            n_sub_blocks,
+            encoder_hidden_size,
+            encoder_output_size,
+            embedding_size,
+            mega_block_kernel_size: list = [5, 7, 11],
+            prolog_kernel_size=3,
+            epilog_kernel_size=1,
+            attention_hidden_size=128,
+            se_reduction=16,
+            simple_pool=False,
+            loss_function=None,
+            dropout=0.5,
     ):
         super(TitaNet, self).__init__()
 
@@ -215,26 +214,23 @@ class TitaNet(nn.Module):
         # Store loss function
         self.loss_function = loss_function
 
-        # Transfer to device
-        self.to(device)
-
     def get_n_params(self, div=1):
         """
         Return the number of parameters in the model and possibly
         divide it by the given number
         """
         return (
-            sum([np.prod(p.size()) for p in self.parameters() if p.requires_grad]) / div
+                sum([np.prod(p.size()) for p in self.parameters() if p.requires_grad]) / div
         )
 
     @classmethod
     def find_n_mega_blocks(
-        cls,
-        embedding_size,
-        n_mels,
-        model_size,
-        loss_function=None,
-        n_mega_blocks_trials=None,
+            cls,
+            embedding_size,
+            n_mels,
+            model_size,
+            loss_function=None,
+            n_mega_blocks_trials=None,
     ):
         """
         Find the best number of mega blocks s.t. the spawned TitaNet model
@@ -261,16 +257,15 @@ class TitaNet(nn.Module):
 
     @classmethod
     def get_titanet(
-        cls,
-        embedding_size=192,
-        n_mels=80,
-        n_mega_blocks=None,
-        model_size="s",
-        attention_hidden_size=128,
-        simple_pool=False,
-        loss_function=None,
-        dropout=0.5,
-        device="cpu",
+            cls,
+            embedding_size=192,
+            n_mels=80,
+            n_mega_blocks=None,
+            model_size="s",
+            attention_hidden_size=128,
+            simple_pool=False,
+            loss_function=None,
+            dropout=0.5,
     ):
         """
         Return one of the three TitaNet instances described in the paper,
@@ -282,8 +277,8 @@ class TitaNet(nn.Module):
             "l",
         ), "Unsupported model size"
         assert (
-            isinstance(loss_function, losses.MetricLearningLoss)
-            or loss_function is None
+                isinstance(loss_function, losses.MetricLearningLoss)
+                or loss_function is None
         ), "Unsupported loss function"
 
         # Get the best number of mega blocks
@@ -304,7 +299,6 @@ class TitaNet(nn.Module):
             simple_pool=simple_pool,
             loss_function=loss_function,
             dropout=dropout,
-            device=device,
         )
 
         # Return the selected model size
@@ -325,6 +319,7 @@ class TitaNet(nn.Module):
         T: maximum number of time steps (frames)
         E: embedding size
         """
+        print('sed')
         encodings = self.encoder(spectrograms)
         embeddings = self.decoder(encodings)
 
@@ -334,7 +329,7 @@ class TitaNet(nn.Module):
 
         # Training mode
         assert (
-            self.loss_function is not None
+                self.loss_function is not None
         ), "Loss function should not be None in training mode"
         return self.loss_function(embeddings, speakers)
 
@@ -352,36 +347,56 @@ class Encoder(nn.Module):
     """
 
     def __init__(
-        self,
-        n_mels,
-        n_mega_blocks,
-        n_sub_blocks,
-        hidden_size,
-        output_size,
-        mega_block_kernel_size,
-        prolog_kernel_size=3,
-        epilog_kernel_size=1,
-        se_reduction=16,
-        dropout=0.5,
+            self,
+            n_mels,
+            n_mega_blocks,
+            n_sub_blocks,
+            hidden_size,
+            output_size,
+            mega_block_kernel_size,
+            prolog_kernel_size=3,
+            epilog_kernel_size=1,
+            se_reduction=16,
+            dropout=0.5,
     ):
         super(Encoder, self).__init__()
 
         # Define encoder as sequence of prolog, mega blocks and epilog
-        self.prolog = modules.ConvBlock1d(n_mels, hidden_size, prolog_kernel_size)
-        self.mega_blocks = nn.Sequential(
+        self.prolog = nn.Sequential(
             *[
-                MegaBlock(
+                modules.ConvBlock1d(
+                    n_mels,
                     hidden_size,
-                    hidden_size,
-                    mega_block_kernel_size,
-                    n_sub_blocks,
-                    se_reduction=se_reduction,
-                    dropout=dropout,
+                    kernel_size=prolog_kernel_size,
+                    activation="relu",
+                    depthwise=True
                 )
-                for _ in range(n_mega_blocks)
-            ]
+            ],
+            modules.SqueezeExcitation(hidden_size, reduction=se_reduction)
         )
-        self.epilog = modules.ConvBlock1d(hidden_size, output_size, epilog_kernel_size)
+        self.mega_blocks = nn.Sequential(*[
+            MegaBlock(
+                hidden_size,
+                hidden_size,
+                n_sub_blocks=n_sub_blocks,
+                kernel_size=kernel_size,
+                se_reduction=se_reduction,
+                dropout=dropout,
+            ) for kernel_size in mega_block_kernel_size
+        ]
+                                         )
+        self.epilog = nn.Sequential(
+            *[
+                modules.ConvBlock1d(
+                    hidden_size,
+                    output_size,
+                    kernel_size=epilog_kernel_size,
+                    activation="relu",
+                    depthwise=True,
+                )
+            ],
+            modules.SqueezeExcitation(output_size, reduction=se_reduction)
+        )
 
     def forward(self, spectrograms):
         """
@@ -395,8 +410,9 @@ class Encoder(nn.Module):
         H: hidden size
         """
         # [B, M, T] -> [B, H, T]
+        print('why')
         prolog_outputs = self.prolog(spectrograms)
-
+        print('hi')
         # [B, H, T] -> [B, H, T]
         mega_blocks_outputs = self.mega_blocks(prolog_outputs)
 
@@ -418,13 +434,13 @@ class MegaBlock(nn.Module):
     """
 
     def __init__(
-        self,
-        input_size,
-        output_size,
-        kernel_size,
-        n_sub_blocks,
-        se_reduction=16,
-        dropout=0.5,
+            self,
+            input_size,
+            output_size,
+            kernel_size,
+            n_sub_blocks,
+            se_reduction=16,
+            dropout=0.5,
     ):
         super(MegaBlock, self).__init__()
 
@@ -448,6 +464,7 @@ class MegaBlock(nn.Module):
             modules.SqueezeExcitation(output_size, reduction=se_reduction)
         )
 
+        self.skip_connection = None
         # Define the final skip connection
         self.skip_connection = nn.Sequential(
             nn.Conv1d(input_size, output_size, kernel_size=1),
@@ -464,9 +481,10 @@ class MegaBlock(nn.Module):
         T: maximum number of time steps (frames)
         """
         # [B, H, T] -> [B, H, T]
-        mega_block_outputs = self.skip_connection(prolog_outputs) + self.sub_blocks(
-            prolog_outputs
-        )
+        mega_block_outputs = self.sub_blocks(prolog_outputs) + \
+                             self.skip_connection(prolog_outputs)
+
+        print(mega_block_outputs.shape)
         return F.dropout(
             F.relu(mega_block_outputs), p=self.dropout, training=self.training
         )
@@ -485,11 +503,11 @@ class Decoder(nn.Module):
     """
 
     def __init__(
-        self,
-        encoder_output_size,
-        attention_hidden_size,
-        embedding_size,
-        simple_pool=False,
+            self,
+            encoder_output_size,
+            attention_hidden_size,
+            embedding_size,
+            simple_pool=False,
     ):
         super(Decoder, self).__init__()
 
@@ -582,3 +600,24 @@ class AttentiveStatsPooling(nn.Module):
         # utterance-level features
         # [[B, DE]; [B, DE]] -> [B, DE * 2]
         return torch.cat([means, stds], dim=1)
+
+
+# model = TitaNet(
+#     n_mels=80,
+#     n_mega_blocks=3,
+#     n_sub_blocks=3,
+#     encoder_hidden_size=1024,
+#     encoder_output_size=1536,
+#     embedding_size=192,
+#     prolog_kernel_size=3,
+#     epilog_kernel_size=1,
+#     attention_hidden_size=128,
+#     se_reduction=16,
+#     simple_pool=False,
+#     loss_function=None,
+#     dropout=0.5,
+# )
+#
+# from torchsummary import summary
+#
+# summary(model, (80, 3000))

@@ -132,6 +132,7 @@ def train(params):
         model.parameters(),
         lr=params.training.optimizer.start_lr,
         weight_decay=params.training.optimizer.weight_decay,
+        momentum=params.training.optimizer.momentum
     )
     optimizer = utils.optimizer_to(optimizer, device=device)
     lr_scheduler = None
@@ -143,21 +144,20 @@ def train(params):
         )
         lr_scheduler = utils.scheduler_to(lr_scheduler, device=device)
 
-    # Start wandb logging
-    wandb_run = None
-    run_name = utils.now()
-    if params.wandb.enabled:
-        print(1)
-        wandb_run = utils.init_wandb(
-            params.wandb.api_key_file,
-            params.wandb.project,
-            name=run_name,
-            config=params.entries,
-        )
+    # # Start wandb logging
+    # run_name = utils.now()
+    # wandb_run = None
+    # if params.wandb.enabled:
+    #     wandb_run = utils.init_wandb(
+    #         params.wandb.api_key_file,
+    #         params.wandb.project,
+    #         name=run_name,
+    #         config=params.entries,
+    #     )
 
     # Perform training loop
     learn.training_loop(
-        run_name,
+        # run_name,
         params.training.epochs,
         model,
         optimizer,
@@ -170,7 +170,7 @@ def train(params):
         reduction_method=params.figures.reduction_method,
         lr_scheduler=lr_scheduler,
         checkpoints_frequency=params.training.checkpoints_frequency,
-        wandb_run=wandb_run,
+        # wandb_run=wandb_run,
         log_console=params.generic.log_console,
         mindcf_p_target=params.test.mindcf_p_target,
         mindcf_c_fa=params.test.mindcf_c_fa,
@@ -178,9 +178,9 @@ def train(params):
         device=device,
     )
 
-    # Stop wandb logging
-    if params.wandb.enabled:
-        wandb_run.finish()
+    # # Stop wandb logging
+    # if params.wandb.enabled:
+    #     wandb_run.finish()
 
 
 if __name__ == "__main__":
