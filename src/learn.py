@@ -74,6 +74,7 @@ def train_one_epoch(
         # Get model outputs
         model_time = time.time()
 
+        optimizer.zero_grad()
         spec, speak = spectrograms.to(device), speakers.to(device)
         embeddings, preds, loss = model(spec, speak)
 

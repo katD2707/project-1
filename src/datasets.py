@@ -270,6 +270,20 @@ class SpeakerDataset:
             "durations_per_speaker_std": round(np.std(durations_per_speaker), 2),
         }
 
+    def __getitem__(self, idx):
+        waveform, sample_rate, speaker = self.get_sample(idx)
+        example = {
+            "waveform": waveform.to("cpu"),
+            "sample_rate": sample_rate,
+            "spectrogram": None,
+            "speaker": speaker,
+            "speaker_id": self.speakers_to_id[speaker],
+        }
+        for transform in self.transforms:
+            example = transform(example)
+        return example
+
+
 class LibriSpeechDataset(SpeakerDataset, torchaudio.datasets.LIBRISPEECH):
     """
     Custom LibriSpeech dataset for speaker-related tasks

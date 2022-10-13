@@ -105,19 +105,20 @@ def train(params):
             device=device,
         )
     else:
-        n_mega_blocks = None
-        if params.titanet.n_mega_blocks:
-            n_mega_blocks = params.titanet.n_mega_blocks
-        model = models.TitaNet.get_titanet(
-            embedding_size=params.generic.embedding_size,
-            n_mels=params.audio.spectrogram.n_mels,
-            n_mega_blocks=n_mega_blocks,
-            model_size=params.titanet.model_size,
-            attention_hidden_size=params.titanet.attention_hidden_size,
-            simple_pool=params.titanet.simple_pool,
-            loss_function=loss_function,
-            dropout=params.titanet.dropout,
-            device=device,
+        model = models.TitaNet(
+            n_mels=80,
+            n_mega_blocks=3,
+            n_sub_blocks=3,
+            encoder_hidden_size=1024,
+            encoder_output_size=1536,
+            embedding_size=192,
+            prolog_kernel_size=3,
+            epilog_kernel_size=1,
+            attention_hidden_size=128,
+            se_reduction=16,
+            simple_pool=False,
+            loss_function=params.training.loss,
+            dropout=0.5,
         )
 
     # Use backprop to chart dependencies
@@ -132,7 +133,7 @@ def train(params):
         model.parameters(),
         lr=params.training.optimizer.start_lr,
         weight_decay=params.training.optimizer.weight_decay,
-        momentum=params.training.optimizer.momentum
+        momentum=params.training.optimizer.momentum,
     )
     optimizer = utils.optimizer_to(optimizer, device=device)
     lr_scheduler = None
@@ -171,7 +172,6 @@ def train(params):
         lr_scheduler=lr_scheduler,
         checkpoints_frequency=params.training.checkpoints_frequency,
         # wandb_run=wandb_run,
-        log_console=params.generic.log_console,
         mindcf_p_target=params.test.mindcf_p_target,
         mindcf_c_fa=params.test.mindcf_c_fa,
         mindcf_c_miss=params.test.mindcf_c_miss,
