@@ -15,11 +15,13 @@ from typing import Tuple, Union
 from torch import Tensor
 from torch.utils.data import Dataset
 from torchaudio.datasets.utils import extract_archive
+
 URL = "commonvoice-dataset"
 FOLDER_IN_ARCHIVE = ""
 
+
 def get_dataloader(
-    dataset, batch_size=1, shuffle=True, num_workers=4, n_mels=80, seed=42
+        dataset, batch_size=1, shuffle=True, num_workers=4, n_mels=80, seed=42
 ):
     """
     Return a dataloader that randomly (or sequentially) samples a batch
@@ -37,7 +39,7 @@ def get_dataloader(
         drop_last=True,
         generator=generator,
         persistent_workers=True
-        
+
     )
 
 
@@ -70,14 +72,14 @@ def collate_fn(batch, n_mels=80):
 
 
 def get_datasets(
-    dataset_root,
-    train_transformations=None,
-    non_train_transformations=None,
-    val=True,
-    val_utterances_per_speaker=10,
-    test=True,
-    test_speakers=10,
-    test_utterances_per_speaker=10,
+        dataset_root,
+        train_transformations=None,
+        non_train_transformations=None,
+        val=True,
+        val_utterances_per_speaker=10,
+        test=True,
+        test_speakers=10,
+        test_utterances_per_speaker=10,
 ):
     """
     Return an instance of the dataset specified in the given
@@ -117,16 +119,16 @@ def download_librispeech(root, url):
 
 
 def load_librispeech_item(
-    fileid: str,        # lang_clean-speaker_id-* (.wav)
-    path: str,          # ./data/common-voice
-    ext_audio: str,     # .wav
+        fileid: str,  # lang_clean-speaker_id-* (.wav)
+        path: str,  # ./data/common-voice
+        ext_audio: str,  # .wav
 ) -> Tuple[Tensor, int, str, str, str]:
     lang_id, speaker_id, utterance_id = fileid.split('-')
 
     # Load audio
     file_audio = utterance_id + ext_audio
     file_audio = os.path.join(path, lang_id, speaker_id, file_audio)
-    waveform, sample_rate = torchaudio.load(file_audio) # ./data/common-voice/lang_clean/speaker_id/*.wav
+    waveform, sample_rate = torchaudio.load(file_audio)  # ./data/common-voice/lang_clean/speaker_id/*.wav
 
     return (
         waveform,
@@ -138,21 +140,20 @@ def load_librispeech_item(
 
 
 class LIBRISPEECH(Dataset):
-
     _ext_audio = ".wav"
 
     def __init__(
-        self,
-        root: Union[str, Path],
-        url: str = URL,
-        folder_in_archive: str = FOLDER_IN_ARCHIVE,
-        download: bool = False,
+            self,
+            root: Union[str, Path],
+            url: str = URL,
+            folder_in_archive: str = FOLDER_IN_ARCHIVE,
+            download: bool = False,
     ):
 
         # url: commonvoice-dataset (.zip)
 
         root = os.fspath(root)
-        self._path = os.path.join(root, folder_in_archive, url)     # ./data/commonvoice-dataset
+        self._path = os.path.join(root, folder_in_archive, url)  # ./data/commonvoice-dataset
 
         if not os.path.isdir(self._path):
             if download:
@@ -162,9 +163,10 @@ class LIBRISPEECH(Dataset):
                     f"Dataset not found at {self._path}. Please set `download=True` to download the dataset."
                 )
         # ./data/commonvoice-dataset/lang_clean/speaker_id/*.wav
-        self._walker = sorted("-".join(str(p).split("/")[-3:]).replace(".wav", "") for p in Path(self._path).glob("*/*/*" + self._ext_audio))
+        self._walker = sorted("-".join(str(p).split("/")[-3:]).replace(".wav", "") for p in
+                              Path(self._path).glob("*/*/*" + self._ext_audio))
 
-   def __getitem__(self, n: int) -> Tuple[Tensor, int, str, str, str]:
+    def __getitem__(self, n: int):
         """Load the n-th sample from the dataset.
 
         Args:
@@ -177,9 +179,9 @@ class LIBRISPEECH(Dataset):
         fileid = self._walker[n]
         return load_librispeech_item(fileid, self._path, self._ext_audio)
 
-
     def __len__(self) -> int:
         return len(self._walker)
+
 
 class SpeakerDataset:
     """
@@ -257,12 +259,12 @@ class SpeakerDataset:
         return len(self.speakers)
 
     def get_splits(
-        self,
-        val=True,
-        val_utterances_per_speaker=10,
-        test=True,
-        test_speakers=10,
-        test_utterances_per_speaker=10,
+            self,
+            val=True,
+            val_utterances_per_speaker=10,
+            test=True,
+            test_speakers=10,
+            test_utterances_per_speaker=10,
     ):
         """
         Return train, validation and test indices
@@ -273,20 +275,20 @@ class SpeakerDataset:
             train_start_utterance = 0
             if val:
                 val_utterances += self.speakers_utterances[s][
-                    :val_utterances_per_speaker
-                ]
+                                  :val_utterances_per_speaker
+                                  ]
                 train_start_utterance += val_utterances_per_speaker
             if test and i < test_speakers:
                 test_utterances += self.speakers_utterances[s][
-                    val_utterances_per_speaker : val_utterances_per_speaker
-                    + test_utterances_per_speaker
-                ]
+                                   val_utterances_per_speaker: val_utterances_per_speaker
+                                                               + test_utterances_per_speaker
+                                   ]
                 train_start_utterance += test_utterances_per_speaker
             train_utterances += self.speakers_utterances[s][train_start_utterance:]
 
         # Check split correctness
         assert (not val or len(val_utterances) > 0) and (
-            not test or len(test_utterances) > 0
+                not test or len(test_utterances) > 0
         ), "No validation or test utterances"
         assert not utils.overlap(
             train_utterances, val_utterances
@@ -326,7 +328,7 @@ class SpeakerDataset:
         div = 1 if not hours else 3600
         for speaker, utterances in self.speakers_utterances.items():
             durations_per_speaker[speaker] = (
-                sum(durations[idx] for idx in utterances) / div
+                    sum(durations[idx] for idx in utterances) / div
             )
         return durations_per_speaker
 
@@ -391,16 +393,9 @@ class LibriSpeechDataset(SpeakerDataset, LIBRISPEECH):
         ) = LIBRISPEECH.__getitem__(self, idx)
         return waveform, sample_rate, speaker
 
-    def get_path(self, idx):
+    def get_path(self, idx):  # lang_clean/speaker_id/*.wav
         fileid = self._walker[idx]
-        speaker_id, chapter_id, utterance_id = fileid.split("-")
-        fileid_audio = speaker_id + "-" + chapter_id + "-" + utterance_id
-        file_audio = fileid_audio + self._ext_audio
-        return os.path.join(self._path, speaker_id, chapter_id, file_audio)
+        lang_id, speaker_id, utterance_id = fileid.split("-")
+        file_audio = utterance_id + self._ext_audio
 
-
-
-
-
-
-
+        return os.path.join(self._path, lang_id, speaker_id, file_audio)
