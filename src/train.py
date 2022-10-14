@@ -133,7 +133,6 @@ def train(params):
         model.parameters(),
         lr=params.training.optimizer.start_lr,
         weight_decay=params.training.optimizer.weight_decay,
-        momentum=params.training.optimizer.momentum,
     )
     optimizer = utils.optimizer_to(optimizer, device=device)
     lr_scheduler = None

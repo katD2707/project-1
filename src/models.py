@@ -602,22 +602,22 @@ class AttentiveStatsPooling(nn.Module):
         return torch.cat([means, stds], dim=1)
 
 
-# model = TitaNet(
-#     n_mels=80,
-#     n_mega_blocks=3,
-#     n_sub_blocks=3,
-#     encoder_hidden_size=1024,
-#     encoder_output_size=1536,
-#     embedding_size=192,
-#     prolog_kernel_size=3,
-#     epilog_kernel_size=1,
-#     attention_hidden_size=128,
-#     se_reduction=16,
-#     simple_pool=False,
-#     loss_function=None,
-#     dropout=0.5,
-# )
-#
-# from torchsummary import summary
-#
-# summary(model, (80, 3000))
+model = TitaNet(
+    n_mels=80,
+    n_mega_blocks=3,
+    n_sub_blocks=3,
+    encoder_hidden_size=1024,
+    encoder_output_size=1536,
+    embedding_size=192,
+    prolog_kernel_size=3,
+    epilog_kernel_size=1,
+    attention_hidden_size=1024,
+    se_reduction=16,
+    simple_pool=False,
+    loss_function=None,
+    dropout=0.5,
+)
+
+from torchsummary import summary
+
+summary(model, (80, 3000))

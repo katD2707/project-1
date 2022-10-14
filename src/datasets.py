@@ -3,15 +3,20 @@ import itertools
 from collections import defaultdict
 from functools import partial
 
-from scipy.io import wavfile
 import torch
 import torchaudio
 import librosa
 import numpy as np
 from tqdm import tqdm
-import glob
 import utils
+from pathlib import Path
+from typing import Tuple, Union
 
+from torch import Tensor
+from torch.utils.data import Dataset
+from torchaudio.datasets.utils import extract_archive
+URL = "commonvoice-dataset"
+FOLDER_IN_ARCHIVE = ""
 
 def get_dataloader(
     dataset, batch_size=1, shuffle=True, num_workers=4, n_mels=80, seed=42
@@ -79,7 +84,7 @@ def get_datasets(
     parameters, splitted into training, validation and test sets
     """
     # Get the dataset
-    full_dataset = CustomDataset(dataset_root)
+    full_dataset = LibriSpeechDataset(dataset_root)
 
     # Compute train, validation and test utterances
     train_utterances, val_utterances, test_utterances = full_dataset.get_splits(
@@ -103,6 +108,78 @@ def get_datasets(
 
     return train_dataset, val_dataset, test_dataset, full_dataset.get_num_speakers()
 
+
+def download_librispeech(root, url):
+    ext_archive = ".zip"
+    filename = url + ext_archive
+    archive = os.path.join(root, filename)  # ./data/commonvoice-dataset.zip
+    extract_archive(archive)
+
+
+def load_librispeech_item(
+    fileid: str,        # lang_clean-speaker_id-* (.wav)
+    path: str,          # ./data/common-voice
+    ext_audio: str,     # .wav
+) -> Tuple[Tensor, int, str, int, int, int]:
+    lang_id, speaker_id, utterance_id = fileid.split('-')
+
+    # Load audio
+    file_audio = utterance_id + ext_audio
+    file_audio = os.path.join(path, lang_id, speaker_id, file_audio)
+    waveform, sample_rate = torchaudio.load(file_audio) # ./data/common-voice/lang_clean/speaker_id/*.wav
+
+    return (
+        waveform,
+        sample_rate,
+        speaker_id,
+        lang_id,
+        utterance_id,
+    )
+
+
+class LIBRISPEECH(Dataset):
+
+    _ext_audio = ".wav"
+
+    def __init__(
+        self,
+        root: Union[str, Path],
+        url: str = URL,
+        folder_in_archive: str = FOLDER_IN_ARCHIVE,
+        download: bool = False,
+    ):
+
+        # url: commonvoice-dataset (.zip)
+
+        root = os.fspath(root)
+        self._path = os.path.join(root, folder_in_archive, url)     # ./data/commonvoice-dataset
+
+        if not os.path.isdir(self._path):
+            if download:
+                download_librispeech(root, url)
+            else:
+                raise RuntimeError(
+                    f"Dataset not found at {self._path}. Please set `download=True` to download the dataset."
+                )
+        # ./data/commonvoice-dataset/lang_clean/speaker_id/*.wav
+        self._walker = sorted("-".join(str(p).split("/")[-3:]).replace(".wav", "") for p in Path(self._path).glob("*/*/*" + self._ext_audio))
+
+   def __getitem__(self, n: int) -> Tuple[Tensor, int, str, int, int, int]:
+        """Load the n-th sample from the dataset.
+
+        Args:
+            n (int): The index of the sample to be loaded
+
+        Returns:
+            (Tensor, int, str, int, int, int):
+            ``(waveform, sample_rate, transcript, speaker_id, chapter_id, utterance_id)``
+        """
+        fileid = self._walker[n]
+        return load_librispeech_item(fileid, self._path, self._ext_audio)
+
+
+    def __len__(self) -> int:
+        return len(self._walker)
 
 class SpeakerDataset:
     """
@@ -184,7 +261,7 @@ class SpeakerDataset:
         val=True,
         val_utterances_per_speaker=10,
         test=True,
-        test_speakers=100,
+        test_speakers=10,
         test_utterances_per_speaker=10,
     ):
         """
@@ -285,33 +362,33 @@ class SpeakerDataset:
         return example
 
 
-class CustomDataset(SpeakerDataset):
+class LibriSpeechDataset(SpeakerDataset, LIBRISPEECH):
     """
     Custom LibriSpeech dataset for speaker-related tasks
     """
 
     def __init__(self, root, transforms=None, *args, **kwargs):
-        assert os.path.exists(root), "Path is not exist"
-        self.speakers_path = glob.glob(root+'/*/*')
-        self._walker = glob.glob(self.root+'/*/*/*')
-        self.speakers = [one_speaker.split('/')[-1] for one_speaker in self.speakers_path]
-        self.speakers_to_id = dict(zip(self.speakers, range(len(self.speakers))))
-        self.id_to_speakers = dict(zip(range(len(self.speakers)), self.speakers))
-        self.root = root
+        if not os.path.exists(root):
+            os.makedirs(root, exist_ok=True)
+            kwargs["download"] = True
+        LIBRISPEECH.__init__(self, root, *args, **kwargs)
         SpeakerDataset.__init__(self, transforms=transforms)
 
     def get_speakers_utterances(self):
         speakers_utterances = defaultdict(list)
-
         for i, fileid in enumerate(self._walker):
-            _, speaker_id, _ = fileid.split("/")[-3:]
-            speakers_utterances[str(speaker_id)].append(i)
+            speaker_id, _, _ = fileid.split("-")
+            speakers_utterances[int(speaker_id)].append(i)
         return speakers_utterances
 
     def get_sample(self, idx):
-        sample_rate, waveform = wavfile.read(self.speakers_path[idx])
-        speaker = self.speakers[idx]
-
+        (
+            waveform,
+            sample_rate,
+            speaker,
+            _,
+            _,
+        ) = LIBRISPEECH.__getitem__(self, idx)
         return waveform, sample_rate, speaker
 
     def get_path(self, idx):
@@ -320,4 +397,10 @@ class CustomDataset(SpeakerDataset):
         fileid_audio = speaker_id + "-" + chapter_id + "-" + utterance_id
         file_audio = fileid_audio + self._ext_audio
         return os.path.join(self._path, speaker_id, chapter_id, file_audio)
+
+
+
+
+
+
 
