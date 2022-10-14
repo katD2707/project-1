@@ -120,7 +120,7 @@ def load_librispeech_item(
     fileid: str,        # lang_clean-speaker_id-* (.wav)
     path: str,          # ./data/common-voice
     ext_audio: str,     # .wav
-) -> Tuple[Tensor, int, str, int, int, int]:
+) -> Tuple[Tensor, int, str, str, str]:
     lang_id, speaker_id, utterance_id = fileid.split('-')
 
     # Load audio
@@ -164,7 +164,7 @@ class LIBRISPEECH(Dataset):
         # ./data/commonvoice-dataset/lang_clean/speaker_id/*.wav
         self._walker = sorted("-".join(str(p).split("/")[-3:]).replace(".wav", "") for p in Path(self._path).glob("*/*/*" + self._ext_audio))
 
-   def __getitem__(self, n: int) -> Tuple[Tensor, int, str, int, int, int]:
+   def __getitem__(self, n: int) -> Tuple[Tensor, int, str, str, str]:
         """Load the n-th sample from the dataset.
 
         Args:
