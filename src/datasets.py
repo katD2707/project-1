@@ -184,7 +184,7 @@ class SpeakerDataset:
         val=True,
         val_utterances_per_speaker=10,
         test=True,
-        test_speakers=10,
+        test_speakers=100,
         test_utterances_per_speaker=10,
     ):
         """
@@ -293,15 +293,19 @@ class CustomDataset(SpeakerDataset):
     def __init__(self, root, transforms=None, *args, **kwargs):
         assert os.path.exists(root), "Path is not exist"
         self.speakers_path = glob.glob(root+'/*/*')
+        self._walker = glob.glob(self.root+'/*/*/*')
         self.speakers = [one_speaker.split('/')[-1] for one_speaker in self.speakers_path]
-
+        self.speakers_to_id = dict(zip(self.speakers, range(len(self.speakers))))
+        self.id_to_speakers = dict(zip(range(len(self.speakers)), self.speakers))
+        self.root = root
         SpeakerDataset.__init__(self, transforms=transforms)
 
     def get_speakers_utterances(self):
         speakers_utterances = defaultdict(list)
+
         for i, fileid in enumerate(self._walker):
-            speaker_id, _, _ = fileid.split("-")
-            speakers_utterances[int(speaker_id)].append(i)
+            _, speaker_id, _ = fileid.split("/")[-3:]
+            speakers_utterances[str(speaker_id)].append(i)
         return speakers_utterances
 
     def get_sample(self, idx):
