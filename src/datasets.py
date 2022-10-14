@@ -3,12 +3,13 @@ import itertools
 from collections import defaultdict
 from functools import partial
 
+from scipy.io import wavfile
 import torch
 import torchaudio
 import librosa
 import numpy as np
 from tqdm import tqdm
-
+import glob
 import utils
 
 
@@ -78,7 +79,7 @@ def get_datasets(
     parameters, splitted into training, validation and test sets
     """
     # Get the dataset
-    full_dataset = LibriSpeechDataset(dataset_root)
+    full_dataset = CustomDataset(dataset_root)
 
     # Compute train, validation and test utterances
     train_utterances, val_utterances, test_utterances = full_dataset.get_splits(
@@ -284,16 +285,16 @@ class SpeakerDataset:
         return example
 
 
-class LibriSpeechDataset(SpeakerDataset, torchaudio.datasets.LIBRISPEECH):
+class CustomDataset(SpeakerDataset):
     """
     Custom LibriSpeech dataset for speaker-related tasks
     """
 
     def __init__(self, root, transforms=None, *args, **kwargs):
-        if not os.path.exists(root):
-            os.makedirs(root, exist_ok=True)
-            kwargs["download"] = True
-        torchaudio.datasets.LIBRISPEECH.__init__(self, root, *args, **kwargs)
+        assert os.path.exists(root), "Path is not exist"
+        self.speakers_path = glob.glob(root+'/*/*')
+        self.speakers = [one_speaker.split('/')[-1] for one_speaker in self.speakers_path]
+
         SpeakerDataset.__init__(self, transforms=transforms)
 
     def get_speakers_utterances(self):
@@ -303,15 +304,10 @@ class LibriSpeechDataset(SpeakerDataset, torchaudio.datasets.LIBRISPEECH):
             speakers_utterances[int(speaker_id)].append(i)
         return speakers_utterances
 
-    def __getitem__(self, idx):
-        (
-            waveform,
-            sample_rate,
-            _,
-            speaker,
-            _,
-            _,
-        ) = torchaudio.datasets.LIBRISPEECH.__getitem__(self, idx)
+    def get_sample(self, idx):
+        sample_rate, waveform = wavfile.read(self.speakers_path[idx])
+        speaker = self.speakers[idx]
+
         return waveform, sample_rate, speaker
 
     def get_path(self, idx):
@@ -321,35 +317,3 @@ class LibriSpeechDataset(SpeakerDataset, torchaudio.datasets.LIBRISPEECH):
         file_audio = fileid_audio + self._ext_audio
         return os.path.join(self._path, speaker_id, chapter_id, file_audio)
 
-
-class VCTKDataset(SpeakerDataset, torchaudio.datasets.VCTK_092):
-    """
-    Custom VCTK dataset for speaker-related tasks
-    """
-
-    def __init__(self, root, transforms=None, *args, **kwargs):
-        if not os.path.exists(root):
-            os.makedirs(root, exist_ok=True)
-            kwargs["download"] = True
-        torchaudio.datasets.VCTK_092.__init__(self, root, *args, **kwargs)
-        SpeakerDataset.__init__(self, transforms=transforms)
-
-    def get_speakers_utterances(self):
-        speakers_utterances = defaultdict(list)
-        for i, (speaker_id, _) in enumerate(self._sample_ids):
-            speakers_utterances[speaker_id].append(i)
-        return speakers_utterances
-
-    def get_sample(self, idx):
-        waveform, sample_rate, _, speaker, _ = torchaudio.datasets.VCTK_092.__getitem__(
-            self, idx
-        )
-        return waveform, sample_rate, speaker
-
-    def get_path(self, idx):
-        speaker_id, utterance_id = self._sample_ids[idx]
-        return os.path.join(
-            self._audio_dir,
-            speaker_id,
-            f"{speaker_id}_{utterance_id}_{self._mic_id}{self._audio_ext}",
-        )
