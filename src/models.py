@@ -1,11 +1,9 @@
-from functools import partial
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-import modules, losses
+import modules
 
 
 class DumbConvNet(nn.Module):
@@ -255,60 +253,6 @@ class TitaNet(nn.Module):
                 min_distance = distance
         return best_value
 
-    @classmethod
-    def get_titanet(
-            cls,
-            embedding_size=192,
-            n_mels=80,
-            n_mega_blocks=None,
-            model_size="s",
-            attention_hidden_size=128,
-            simple_pool=False,
-            loss_function=None,
-            dropout=0.5,
-    ):
-        """
-        Return one of the three TitaNet instances described in the paper,
-        i.e. TitaNet-S, TitaNet-M or TitaNet-L
-        """
-        assert isinstance(model_size, str) and model_size.lower() in (
-            "s",
-            "m",
-            "l",
-        ), "Unsupported model size"
-        assert (
-                isinstance(loss_function, losses.MetricLearningLoss)
-                or loss_function is None
-        ), "Unsupported loss function"
-
-        # Get the best number of mega blocks
-        if n_mega_blocks is None:
-            n_mega_blocks = cls.find_n_mega_blocks(
-                embedding_size, n_mels, model_size, loss_function=loss_function
-            )
-
-        # Assign parameters common to all model sizes
-        titanet = partial(
-            TitaNet,
-            n_mels=n_mels,
-            n_mega_blocks=n_mega_blocks,
-            n_sub_blocks=3,
-            encoder_output_size=1536,
-            embedding_size=embedding_size,
-            attention_hidden_size=attention_hidden_size,
-            simple_pool=simple_pool,
-            loss_function=loss_function,
-            dropout=dropout,
-        )
-
-        # Return the selected model size
-        if model_size.lower() == "s":
-            return titanet(encoder_hidden_size=256, mega_block_kernel_size=3)
-        elif model_size.lower() == "m":
-            return titanet(encoder_hidden_size=512, mega_block_kernel_size=7)
-        elif model_size.lower() == "l":
-            return titanet(encoder_hidden_size=1024, mega_block_kernel_size=11)
-
     def forward(self, spectrograms, speakers=None):
         """
         Given input spectrograms of shape [B, M, T], TitaNet returns
@@ -319,7 +263,6 @@ class TitaNet(nn.Module):
         T: maximum number of time steps (frames)
         E: embedding size
         """
-        print('sed')
         encodings = self.encoder(spectrograms)
         embeddings = self.decoder(encodings)
 
@@ -410,9 +353,8 @@ class Encoder(nn.Module):
         H: hidden size
         """
         # [B, M, T] -> [B, H, T]
-        print('why')
         prolog_outputs = self.prolog(spectrograms)
-        print('hi')
+
         # [B, H, T] -> [B, H, T]
         mega_blocks_outputs = self.mega_blocks(prolog_outputs)
 
@@ -484,7 +426,6 @@ class MegaBlock(nn.Module):
         mega_block_outputs = self.sub_blocks(prolog_outputs) + \
                              self.skip_connection(prolog_outputs)
 
-        print(mega_block_outputs.shape)
         return F.dropout(
             F.relu(mega_block_outputs), p=self.dropout, training=self.training
         )
@@ -602,22 +543,22 @@ class AttentiveStatsPooling(nn.Module):
         return torch.cat([means, stds], dim=1)
 
 
-model = TitaNet(
-    n_mels=80,
-    n_mega_blocks=3,
-    n_sub_blocks=3,
-    encoder_hidden_size=1024,
-    encoder_output_size=1536,
-    embedding_size=192,
-    prolog_kernel_size=3,
-    epilog_kernel_size=1,
-    attention_hidden_size=1024,
-    se_reduction=16,
-    simple_pool=False,
-    loss_function=None,
-    dropout=0.5,
-)
-
-from torchsummary import summary
-
-summary(model, (80, 3000))
+# model = TitaNet(
+#     n_mels=80,
+#     n_mega_blocks=3,
+#     n_sub_blocks=3,
+#     encoder_hidden_size=1024,
+#     encoder_output_size=1536,
+#     embedding_size=192,
+#     prolog_kernel_size=3,
+#     epilog_kernel_size=1,
+#     attention_hidden_size=1024,
+#     se_reduction=16,
+#     simple_pool=False,
+#     loss_function=None,
+#     dropout=0.5,
+# )
+#
+# from torchsummary import summary
+#
+# summary(model, (80, 3000))

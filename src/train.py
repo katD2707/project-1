@@ -117,9 +117,10 @@ def train(params):
             attention_hidden_size=128,
             se_reduction=16,
             simple_pool=False,
-            loss_function=params.training.loss,
+            loss_function=loss_function,
             dropout=0.5,
         )
+        model.to(device)
 
     # Use backprop to chart dependencies
     if params.generic.chart_dependencies:

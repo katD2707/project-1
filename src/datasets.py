@@ -115,15 +115,15 @@ def download_librispeech(root, url):
     ext_archive = ".zip"
     filename = url + ext_archive
     archive = os.path.join(root, filename)  # ./data/commonvoice-dataset.zip
-    extract_archive(archive)
+    extract_archive(archive, archive.replace(".zip",""))
 
 
 def load_librispeech_item(
-        fileid: str,  # lang_clean-speaker_id-* (.wav)
+        fileid: str,  # lang_clean|speaker_id|* (.wav)
         path: str,  # ./data/common-voice
         ext_audio: str,  # .wav
 ) -> Tuple[Tensor, int, str, str, str]:
-    lang_id, speaker_id, utterance_id = fileid.split('-')
+    lang_id, speaker_id, utterance_id = fileid.split('|')
 
     # Load audio
     file_audio = utterance_id + ext_audio
@@ -163,7 +163,7 @@ class LIBRISPEECH(Dataset):
                     f"Dataset not found at {self._path}. Please set `download=True` to download the dataset."
                 )
         # ./data/commonvoice-dataset/lang_clean/speaker_id/*.wav
-        self._walker = sorted("-".join(str(p).split("/")[-3:]).replace(".wav", "") for p in
+        self._walker = sorted("|".join(str(p).split("/")[-3:]).replace(".wav", "") for p in
                               Path(self._path).glob("*/*/*" + self._ext_audio))
 
     def __getitem__(self, n: int):
@@ -192,7 +192,7 @@ class SpeakerDataset:
 
     def __init__(self, transforms=None):
         self.transforms = transforms or []
-        self.speakers_utterances = self.get_speakers_utterances()
+        self.speakers_utterances = self.get_speakers_utterances() # {str: int, ...}
         self.speakers = list(self.speakers_utterances.keys())
         self.speakers_to_id = dict(zip(self.speakers, range(len(self.speakers))))
         self.id_to_speakers = dict(zip(range(len(self.speakers)), self.speakers))
@@ -379,8 +379,8 @@ class LibriSpeechDataset(SpeakerDataset, LIBRISPEECH):
     def get_speakers_utterances(self):
         speakers_utterances = defaultdict(list)
         for i, fileid in enumerate(self._walker):
-            speaker_id, _, _ = fileid.split("-")
-            speakers_utterances[int(speaker_id)].append(i)
+            _, speaker_id, _ = fileid.split("|")
+            speakers_utterances[speaker_id].append(i)
         return speakers_utterances
 
     def get_sample(self, idx):
@@ -395,7 +395,7 @@ class LibriSpeechDataset(SpeakerDataset, LIBRISPEECH):
 
     def get_path(self, idx):  # lang_clean/speaker_id/*.wav
         fileid = self._walker[idx]
-        lang_id, speaker_id, utterance_id = fileid.split("-")
+        lang_id, speaker_id, utterance_id = fileid.split("|")
         file_audio = utterance_id + self._ext_audio
 
         return os.path.join(self._path, lang_id, speaker_id, file_audio)
