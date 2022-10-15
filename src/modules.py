@@ -86,7 +86,6 @@ class DepthwiseConv1d(nn.Module):
         CO: output channels
         WO: output width
         """
-        print('lol')
         return self.conv(inputs)
 
 
@@ -142,7 +141,6 @@ class ConvBlock1d(nn.Module):
         CO: output channels
         WO: output width
         """
-        print(6)
         return self.conv_block(inputs)
 
 
@@ -177,7 +175,6 @@ class SqueezeExcitation(nn.Module):
         C: number of channels
         W: input width
         """
-        print('yo')
         # [B, C, W] -> [B, C]
         squeezed = self.squeeze(inputs).squeeze(-1)
 
