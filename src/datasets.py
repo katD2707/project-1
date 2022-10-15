@@ -159,9 +159,8 @@ class LIBRISPEECH(Dataset):
             if download:
                 download_librispeech(root, url)
             else:
-                raise RuntimeError(
-                    f"Dataset not found at {self._path}. Please set `download=True` to download the dataset."
-                )
+                print("You don't download dataset")
+
         # ./data/commonvoice-dataset/lang_clean/speaker_id/*.wav
         self._walker = sorted("|".join(str(p).split("/")[-3:]).replace(".wav", "") for p in
                               Path(self._path).glob("*/*/*" + self._ext_audio))
