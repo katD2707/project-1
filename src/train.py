@@ -48,6 +48,7 @@ def train(params):
     # Get datasets and dataloaders
     train_dataset, val_dataset, test_dataset, n_speakers = datasets.get_datasets(
         params.dataset.root,
+        download=False,
         train_transformations=train_transformations,
         non_train_transformations=non_train_transformations,
         val=params.validation.enabled,

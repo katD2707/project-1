@@ -73,6 +73,7 @@ def collate_fn(batch, n_mels=80):
 
 def get_datasets(
         dataset_root,
+        download=False,
         train_transformations=None,
         non_train_transformations=None,
         val=True,
@@ -86,7 +87,7 @@ def get_datasets(
     parameters, splitted into training, validation and test sets
     """
     # Get the dataset
-    full_dataset = LibriSpeechDataset(dataset_root)
+    full_dataset = LibriSpeechDataset(dataset_root, download=download)
 
     # Compute train, validation and test utterances
     train_utterances, val_utterances, test_utterances = full_dataset.get_splits(
