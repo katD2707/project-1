@@ -146,17 +146,6 @@ def train(params):
         )
         lr_scheduler = utils.scheduler_to(lr_scheduler, device=device)
 
-    # # Start wandb logging
-    # run_name = utils.now()
-    # wandb_run = None
-    # if params.wandb.enabled:
-    #     wandb_run = utils.init_wandb(
-    #         params.wandb.api_key_file,
-    #         params.wandb.project,
-    #         name=run_name,
-    #         config=params.entries,
-    #     )
-
     # Perform training loop
     learn.training_loop(
         # run_name,
@@ -168,20 +157,13 @@ def train(params):
         test_dataset=test_dataset if params.test.enabled else None,
         val_dataloader=val_dataloader,
         val_every=params.validation.every if params.validation.enabled else None,
-        figures_path=params.figures.path if params.figures.enabled else None,
-        reduction_method=params.figures.reduction_method,
         lr_scheduler=lr_scheduler,
         checkpoints_frequency=params.training.checkpoints_frequency,
-        # wandb_run=wandb_run,
         mindcf_p_target=params.test.mindcf_p_target,
         mindcf_c_fa=params.test.mindcf_c_fa,
         mindcf_c_miss=params.test.mindcf_c_miss,
         device=device,
     )
-
-    # # Stop wandb logging
-    # if params.wandb.enabled:
-    #     wandb_run.finish()
 
 
 if __name__ == "__main__":

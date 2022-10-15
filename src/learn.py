@@ -45,7 +45,6 @@ def training_loop(
         test_dataset=None,
         val_dataloader=None,
         val_every=None,
-        figures_path=None,
         lr_scheduler=None,
         checkpoints_frequency=None,
         mindcf_p_target=0.01,
@@ -61,11 +60,6 @@ def training_loop(
     # checkpoints_path = os.path.join(checkpoints_path, run_name)
     if os.path.exists(checkpoints_path) is False:
         os.makedirs(checkpoints_path)
-
-    # Create figures directory
-    if figures_path is not None:
-        figures_path = os.path.join(figures_path)
-        os.makedirs(figures_path, exist_ok=True)
 
     # For each epoch
     for epoch in range(1, epochs + 1):
