@@ -2,12 +2,9 @@ import os
 import time
 import math
 import sys
-import json
-from matplotlib.pyplot import figure
 
 import torch
 import torch.nn.functional as F
-import wandb
 from tqdm import tqdm
 
 import utils
@@ -19,7 +16,6 @@ def save_checkpoint(
         model,
         optimizer,
         lr_scheduler=None,
-        # wandb_run=None,
 ):
     """
     Save the current state of the model, optimizer and learning rate scheduler,
@@ -38,9 +34,100 @@ def save_checkpoint(
     # Save state dictionary
     checkpoint_file = os.path.join(checkpoints_path, f"titanet_epoch_{epoch}.pth")
     torch.save(state_dict, checkpoint_file)
-    # if wandb_run is not None:
-    #     wandb_run.save(checkpoint_file)
 
+def training_loop(
+        # run_name,
+        epochs,
+        model,
+        optimizer,
+        train_dataloader,
+        checkpoints_path,
+        test_dataset=None,
+        val_dataloader=None,
+        val_every=None,
+        figures_path=None,
+        lr_scheduler=None,
+        checkpoints_frequency=None,
+        mindcf_p_target=0.01,
+        mindcf_c_fa=1,
+        mindcf_c_miss=1,
+        device="cpu",
+):
+    """
+    Standard training loop function: train and evaluate
+    after each training epoch
+    """
+    # Create checkpoints directory
+    # checkpoints_path = os.path.join(checkpoints_path, run_name)
+    if os.path.exists(checkpoints_path) is False:
+        os.makedirs(checkpoints_path)
+
+    # Create figures directory
+    if figures_path is not None:
+        figures_path = os.path.join(figures_path)
+        os.makedirs(figures_path, exist_ok=True)
+
+    # For each epoch
+    for epoch in range(1, epochs + 1):
+
+        # Train for one epoch
+        train_one_epoch(
+            epoch,
+            epochs,
+            model,
+            optimizer,
+            train_dataloader,
+            lr_scheduler=lr_scheduler,
+            device=device,
+        )
+
+        # Decay the learning rate
+        if lr_scheduler is not None:
+            lr_scheduler.step()
+
+        # Save checkpoints once in a while
+        if checkpoints_frequency is not None and epoch % checkpoints_frequency == 0:
+            save_checkpoint(
+                epoch,
+                checkpoints_path,
+                model,
+                optimizer,
+                lr_scheduler=lr_scheduler,
+            )
+
+        # Evaluate once in a while (always evaluate at the first and last epochs)
+        if (
+                val_dataloader is not None
+                and val_every is not None
+                and (epoch % val_every == 0 or epoch == 1 or epoch == epochs)
+        ):
+            evaluate(
+                model,
+                val_dataloader,
+                current_epoch=epoch,
+                total_epochs=epochs,
+                device=device,
+            )
+
+    # Always save the last checkpoint
+    save_checkpoint(
+        epochs,
+        checkpoints_path,
+        model,
+        optimizer,
+        lr_scheduler=lr_scheduler,
+    )
+
+    # Final test
+    if test_dataset is not None:
+        test(
+            model,
+            test_dataset,
+            mindcf_p_target=mindcf_p_target,
+            mindcf_c_fa=mindcf_c_fa,
+            mindcf_c_miss=mindcf_c_miss,
+            device=device,
+        )
 
 def train_one_epoch(
         current_epoch,
@@ -49,10 +136,6 @@ def train_one_epoch(
         optimizer,
         dataloader,
         lr_scheduler=None,
-        figures_path=None,
-        reduction_method="svd",
-        wandb_run=None,
-        log_console=True,
         device="cpu",
 ):
     """
@@ -131,132 +214,6 @@ def train_one_epoch(
           f'Recall: {metrics["recall"]:.2f}   '
           f'F1: {metrics["f1"]:.2f}  ++++++++')
 
-    # Plot embeddings
-    if figures_path is not None:
-        figure_path = os.path.join(figures_path, f"epoch_{current_epoch}_train.png")
-        utils.visualize_embeddings(
-            torch.stack(epoch_embeddings),
-            epoch_targets,
-            reduction_method=reduction_method,
-            show=False,
-            save=figure_path,
-            only_centroids=False,
-        )
-        if wandb_run is not None:
-            metrics["train/embeddings"] = wandb.Image(figure_path)
-
-    # Log to wandb
-    # if wandb_run is not None:
-    #     wandb_run.log(metrics, step=current_epoch)
-
-
-def training_loop(
-        # run_name,
-        epochs,
-        model,
-        optimizer,
-        train_dataloader,
-        checkpoints_path,
-        test_dataset=None,
-        val_dataloader=None,
-        val_every=None,
-        figures_path=None,
-        reduction_method="svd",
-        lr_scheduler=None,
-        checkpoints_frequency=None,
-        # wandb_run=None,
-        log_console=True,
-        mindcf_p_target=0.01,
-        mindcf_c_fa=1,
-        mindcf_c_miss=1,
-        device="cpu",
-):
-    """
-    Standard training loop function: train and evaluate
-    after each training epoch
-    """
-    # Create checkpoints directory
-    # checkpoints_path = os.path.join(checkpoints_path, run_name)
-    if os.path.exists(checkpoints_path) is False:
-        os.makedirs(checkpoints_path)
-
-    # Create figures directory
-    if figures_path is not None:
-        figures_path = os.path.join(figures_path)
-        os.makedirs(figures_path, exist_ok=True)
-
-    # For each epoch
-    for epoch in range(1, epochs + 1):
-
-        # Train for one epoch
-        train_one_epoch(
-            epoch,
-            epochs,
-            model,
-            optimizer,
-            train_dataloader,
-            lr_scheduler=lr_scheduler,
-            figures_path=figures_path,
-            reduction_method=reduction_method,
-            # wandb_run=wandb_run,
-            device=device,
-        )
-
-        # Decay the learning rate
-        if lr_scheduler is not None:
-            lr_scheduler.step()
-
-        # Save checkpoints once in a while
-        if checkpoints_frequency is not None and epoch % checkpoints_frequency == 0:
-            save_checkpoint(
-                epoch,
-                checkpoints_path,
-                model,
-                optimizer,
-                lr_scheduler=lr_scheduler,
-                # wandb_run=wandb_run,
-            )
-
-        # Evaluate once in a while (always evaluate at the first and last epochs)
-        if (
-                val_dataloader is not None
-                and val_every is not None
-                and (epoch % val_every == 0 or epoch == 1 or epoch == epochs)
-        ):
-            evaluate(
-                model,
-                val_dataloader,
-                current_epoch=epoch,
-                total_epochs=epochs,
-                figures_path=figures_path,
-                reduction_method=reduction_method,
-                # wandb_run=wandb_run,
-                device=device,
-            )
-
-    # Always save the last checkpoint
-    save_checkpoint(
-        epochs,
-        checkpoints_path,
-        model,
-        optimizer,
-        lr_scheduler=lr_scheduler,
-        # wandb_run=wandb_run,
-    )
-
-    # Final test
-    if test_dataset is not None:
-        test(
-            model,
-            test_dataset,
-            # wandb_run=wandb_run,
-            log_console=log_console,
-            mindcf_p_target=mindcf_p_target,
-            mindcf_c_fa=mindcf_c_fa,
-            mindcf_c_miss=mindcf_c_miss,
-            device=device,
-        )
-
 
 @torch.no_grad()
 def evaluate(
@@ -264,10 +221,6 @@ def evaluate(
         dataloader,
         current_epoch=None,
         total_epochs=None,
-        figures_path=None,
-        figure_name=None,
-        reduction_method="svd",
-        # wandb_run=None,
         device="cpu",
 ):
     """
@@ -327,34 +280,12 @@ def evaluate(
           f'Recall: {metrics["recall"]:.2f}   '
           f'F1: {metrics["f1"]:.2f}  ++++++++')
 
-    # Plot embeddings
-    if figures_path is not None:
-        if figure_name is None:
-            figure_name = f"epoch_{current_epoch}_val.png"
-        figure_path = os.path.join(figures_path, figure_name)
-        utils.visualize_embeddings(
-            torch.stack(epoch_embeddings),
-            epoch_targets,
-            reduction_method=reduction_method,
-            show=False,
-            save=figure_path,
-            only_centroids=False,
-        )
-        # if wandb_run is not None:
-        #     metrics[f"val/embeddings"] = wandb.Image(figure_path)
-
-    # Log to wandb
-    # if wandb_run is not None:
-    #     wandb_run.log(metrics, step=current_epoch)
-
 
 @torch.no_grad()
 def test(
         model,
         test_dataset,
         indices=None,
-        wandb_run=None,
-        log_console=True,
         mindcf_p_target=0.01,
         mindcf_c_fa=1,
         mindcf_c_miss=1,
@@ -392,20 +323,13 @@ def test(
 
     print(f'++++++++  Testing: EER: {metrics["eer"]} / Precision: {metrics["mindcf"]}  ++++++++')
 
-    # Log to wandb
-    # if wandb_run is not None:
-    #     wandb_run.notes = json.dumps(metrics, indent=2).encode("utf-8")
-
     return metrics
 
 
 def infer(
         model,
         utterances,
-        speakers,
         dataset,
-        reduction_method="svd",
-        figure_path=None,
         device="cpu",
 ):
     """
@@ -421,12 +345,4 @@ def infer(
         embeddings = model(data["spectrogram"].to(device))
         all_embeddings += embeddings
 
-    # Show embeddings
-    utils.visualize_embeddings(
-        torch.stack(all_embeddings),
-        speakers,
-        reduction_method=reduction_method,
-        show=True,
-        save=figure_path,
-        only_centroids=False,
-    )
+    return all_embeddings

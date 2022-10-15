@@ -15,11 +15,6 @@ training:
   epochs: 250
   loss: "arc"
 
-figures:
-  enabled: false
-  path: "./figures"
-  reduction_method: "svd"
-
 validation:
   enabled: true
   every: 2 # epochs
@@ -64,11 +59,11 @@ baseline:
   segment_length: 160
   average: True
 
-wandb:
-  enabled: false
-  project: "titanet-test"
-  entity: "d-yukito"
-  api_key_file: "./init/wandb_api_key_file"
+#wandb:
+#  enabled: false
+#  project: "titanet-test"
+#  entity: "d-yukito"
+#  api_key_file: "./init/wandb_api_key_file"
 
 generic:
   seed: 42
