@@ -160,7 +160,7 @@ class LIBRISPEECH(Dataset):
             if download:
                 download_librispeech(root, url)
             else:
-                print("You don't download dataset")
+                print("Dataset is considered as downloaded")
 
         # ./data/commonvoice-dataset/lang_clean/speaker_id/*.wav
         self._walker = sorted("|".join(str(p).split("/")[-3:]).replace(".wav", "") for p in

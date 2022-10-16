@@ -10,7 +10,7 @@ training:
     end_lr: 0.00001
     weight_decay: 0.0002
   checkpoints_path: "./checkpoints"
-  checkpoints_frequency: 2 # epochs
+  checkpoints_frequency: 1 # epochs
   batch_size: 8
   epochs: 250
   loss: "arc"

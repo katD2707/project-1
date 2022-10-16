@@ -152,8 +152,7 @@ def train_one_epoch(
         model_time = time.time()
 
         optimizer.zero_grad()
-        spec, speak = spectrograms.to(device), speakers.to(device)
-        embeddings, preds, loss = model(spec, speak)
+        embeddings, preds, loss = model(spectrograms.to(device), speakers.to(device))
 
         model_time = time.time() - model_time
 
@@ -179,7 +178,7 @@ def train_one_epoch(
         opt_time = time.time() - opt_time
         epoch_opt_time += opt_time
 
-        if step % 25 == 0:
+        if step % 312 == 0:
             print(f'===> Training: Epoch [{current_epoch}/{total_epochs}]({step}/{len(dataloader)}): Loss: {loss:.2f} '
                   f'in {model_time + data_time + opt_time:.1f} sec')
 
@@ -203,10 +202,10 @@ def train_one_epoch(
           f'with LR: {lr_scheduler.get_last_lr()[0] if lr_scheduler is not None else optimizer.param_groups[0]["lr"]}  '
           f'++++++++')
     print(f'++++++++  Metrics: '
-          f'Accuracy: {metrics["accuracy"]:.2f}   '
-          f'Precision: {metrics["precision"]:.2f}   '
-          f'Recall: {metrics["recall"]:.2f}   '
-          f'F1: {metrics["f1"]:.2f}  ++++++++')
+          f'Accuracy: {metrics["train/accuracy"]:.2f}   '
+          f'Precision: {metrics["train/precision"]:.2f}   '
+          f'Recall: {metrics["train/recall"]:.2f}   '
+          f'F1: {metrics["train/f1"]:.2f}  ++++++++')
 
 
 @torch.no_grad()
@@ -269,10 +268,10 @@ def evaluate(
           f'AVGLoss: {(epoch_loss / len(dataloader)):.2f} '
           f'in {epoch_model_time + epoch_data_time:.2f} sec  ++++++++')
     print(f'++++++++  Metrics: '
-          f'Accuracy: {metrics["accuracy"]:.2f}   '
-          f'Precision: {metrics["precision"]:.2f}   '
-          f'Recall: {metrics["recall"]:.2f}   '
-          f'F1: {metrics["f1"]:.2f}  ++++++++')
+          f'Accuracy: {metrics["val/accuracy"]:.2f}   '
+          f'Precision: {metrics["val/precision"]:.2f}   '
+          f'Recall: {metrics["val/recall"]:.2f}   '
+          f'F1: {metrics["val/f1"]:.2f}  ++++++++')
 
 
 @torch.no_grad()
@@ -315,7 +314,7 @@ def test(
         prefix="test",
     )
 
-    print(f'++++++++  Testing: EER: {metrics["eer"]} / Precision: {metrics["mindcf"]}  ++++++++')
+    print(f'++++++++  Testing: EER: {metrics["test/eer"]} / Precision: {metrics["test/mindcf"]}  ++++++++')
 
     return metrics
 
