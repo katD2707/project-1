@@ -4,11 +4,10 @@ dataset:
 training:
   optimizer:
     type: "sgd"
-    momentum: 0.9
-    start_lr: 0.08
+    start_lr: 0.001
     scheduler: true
     end_lr: 0.00001
-    weight_decay: 0.0002
+    weight_decay: 0.0
   checkpoints_path: "./checkpoints"
   checkpoints_frequency: 1 # epochs
   batch_size: 8
@@ -17,7 +16,7 @@ training:
 
 validation:
   enabled: true
-  every: 2 # epochs
+  every: 4 # epochs
   batch_size: 8
   num_utterances_per_speaker: 10
 

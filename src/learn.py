@@ -252,8 +252,9 @@ def evaluate(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        print(f'===> Validate: Epoch [{current_epoch}/{total_epochs}]({step}/{len(dataloader)}): Loss: {loss:.2f} in '
-              f'{model_time + data_time:.1f} sec')
+        if step % 312 == 0:
+            print(f'===> Validate: Epoch [{current_epoch}/{total_epochs}]({step}/{len(dataloader)}): Loss: {loss:.2f} in '
+                  f'{model_time + data_time:.1f} sec')
 
         # Increment step and re-initialize time counter
         step += 1
@@ -264,7 +265,7 @@ def evaluate(
     if len(epoch_preds) > 0:
         metrics = utils.get_train_val_metrics(epoch_targets, epoch_preds, prefix="val")
 
-    print(f'++++++++  TRAINING: Epoch [{current_epoch}/{total_epochs}]: '
+    print(f'++++++++  VALIDATE: Epoch [{current_epoch}/{total_epochs}]: '
           f'AVGLoss: {(epoch_loss / len(dataloader)):.2f} '
           f'in {epoch_model_time + epoch_data_time:.2f} sec  ++++++++')
     print(f'++++++++  Metrics: '
@@ -314,7 +315,7 @@ def test(
         prefix="test",
     )
 
-    print(f'++++++++  Testing: EER: {metrics["test/eer"]} / Precision: {metrics["test/mindcf"]}  ++++++++')
+    print(f'++++++++  TESTING: EER: {metrics["test/eer"]} / Precision: {metrics["test/mindcf"]}  ++++++++')
 
     return metrics
 
