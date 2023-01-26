@@ -15,5 +15,5 @@ train_list: lists/train_list.txt
 test_list: lists/test_list.txt
 train_path: ../prj1_dataset/vi_clean
 test_path: ../vivos-vietnamese/vivos/test/waves
-musan_path: ../musan_split/content/augment_root/musan_split
+musan_path: ../musan-split/content/augment_root/musan_split
 rir_path: ../rirs-noise/RIRS_NOISES/simulated_rirs
