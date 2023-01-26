@@ -133,7 +133,7 @@ class train_dataset_loader(Dataset):
             data = line.strip().split();
 
             speaker_label = dictkeys[data[0]];
-            filename = os.path.join(train_path,data[1]);
+            filename = os.path.join(train_path, data[0]+'/'+data[1]);
             
             self.data_label.append(speaker_label)
             self.data_list.append(filename)
