@@ -61,6 +61,7 @@ parser.add_argument('--dcf_c_fa',       type=float, default=1,      help='Cost o
 ## Load and save
 parser.add_argument('--initial_model',  type=str,   default="",     help='Initial model weights')
 parser.add_argument('--save_path',      type=str,   default="exps/exp1", help='Path for model and logs')
+parser.add_argument('--model_load_path', type=str,   default="exps/exp1", help='Path for load checkpoint')
 
 ## Training and test data
 parser.add_argument('--train_list',     type=str,   default="data/train_list.txt",  help='Train list')
@@ -158,7 +159,7 @@ def main_worker(gpu, ngpus_per_node, args):
     trainer     = ModelTrainer(s, **vars(args))
 
     ## Load model weights
-    modelfiles = glob.glob('%s/model0*.model'%args.model_save_path)
+    modelfiles = glob.glob('%s/model0*.model'%args.model_load_path)
     modelfiles.sort()
 
     if(args.initial_model != ""):
